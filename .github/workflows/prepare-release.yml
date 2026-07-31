@@ -1,0 +1,54 @@
+name: Prepare Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Package version without a leading v prefix (for example 0.1.0)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  create-draft:
+    name: Create draft
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "TAG=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Extract release notes
+        id: notes
+        run: |
+          {
+            echo "BODY<<EOF"
+            pnpm release-notes "${{ steps.version.outputs.VERSION }}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: ${{ steps.version.outputs.TAG }}
+          body: ${{ steps.notes.outputs.BODY }}
+          draft: true
+          generate_release_notes: false

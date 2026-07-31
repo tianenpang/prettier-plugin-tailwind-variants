@@ -1,0 +1,79 @@
+name: Feature request
+description: Propose a change or new capability
+title: '[feat]: '
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Lead with the problem. Check [existing issues](https://github.com/tianenpang/prettier-plugin-tailwind-variants/issues) first.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do that is hard or missing today?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposal
+      description: How should the plugin behave?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Workarounds or other approaches you considered.
+    validations:
+      required: false
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples
+      description: Sample input, options, or before/after.
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Environment (optional)
+        Only if the request depends on a specific stack.
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Other
+        - N/A
+    validations:
+      required: false
+  - type: dropdown
+    id: framework
+    attributes:
+      label: Framework / surface
+      multiple: true
+      options:
+        - TypeScript / JavaScript
+        - Vue
+        - Svelte
+        - Astro
+        - HTML
+        - Angular
+        - Other
+        - N/A
+    validations:
+      required: false
+  - type: input
+    id: versions
+    attributes:
+      label: Relevant versions
+      placeholder: Node 22 / prettier 3.x / vue 3.x
+    validations:
+      required: false

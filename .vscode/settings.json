@@ -1,0 +1,57 @@
+{
+  "npm.packageManager": "pnpm",
+
+  "biome.enabled": false,
+  "npm.autoDetect": "off",
+  "js/ts.experimental.useTsgo": false,
+
+  "editor.formatOnSave": true,
+  "editor.quickSuggestions": {
+    "strings": "on"
+  },
+  "eslint.useFlatConfig": true,
+  "eslint.format.enable": true,
+  "prettier.requireConfig": true,
+
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+
+  "eslint.validate": ["javascript", "typescript"],
+
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  "[javascript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  "tailwindCSS.experimental.classRegex": [
+    ["\\b(?:base|class|className)\\s*:\\s*['\"`]([^'\"`]*)['\"`]"],
+    [
+      "\\b(?:base|class|className)\\s*:\\s*(\\[(?:[^\\[\\]]|\\[(?:[^\\[\\]]|\\[(?:[^\\[\\]]|\\[[^\\[\\]]*\\])*\\])*\\])*\\])",
+      "['\"`]([^'\"`]*)['\"`]"
+    ],
+    ["\\b(?:class|className)\\s*:\\s*(\\{(?:[^{}]|\\{[^{}]*\\})*\\})", "['\"`]([^'\"`]*)['\"`]"],
+    ["\\bslots\\s*:\\s*(\\{(?:[^{}]|\\{[^{}]*\\})*\\})", "['\"`]([^'\"`]*)['\"`]"],
+    [
+      "\\bvariants\\s*:\\s*(\\{(?:[^{}]|\\{(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*\\})*\\})",
+      "['\"`]([^'\"`]*)['\"`]"
+    ]
+  ]
+}

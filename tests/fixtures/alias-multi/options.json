@@ -1,0 +1,4 @@
+{
+  "tvFunctions": ["createTv", "makeButton", "makeBadge"],
+  "tailwindFunctions": ["createTv", "makeButton", "makeBadge"]
+}

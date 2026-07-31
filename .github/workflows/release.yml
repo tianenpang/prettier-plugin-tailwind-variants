@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Resolve version
+        run: |
+          SHA_SHORT=$(git rev-parse --short HEAD)
+          echo "SHA_SHORT=$SHA_SHORT" >> "$GITHUB_ENV"
+
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION=${{ github.event.release.tag_name }}
+            VERSION=${VERSION#v}
+          else
+            VERSION=0.0.0-insiders.$SHA_SHORT
+          fi
+
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Resolve release channel
+        run: echo "RELEASE_CHANNEL=$(pnpm release-channel "$VERSION")" >> "$GITHUB_ENV"
+
+      - name: Bump insiders version
+        if: github.event_name != 'release'
+        run: pnpm version "$VERSION" --force --no-git-tag-version
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
+
+      - name: Publish package
+        run: pnpm publish --provenance --access public --tag "$RELEASE_CHANNEL" --no-git-checks

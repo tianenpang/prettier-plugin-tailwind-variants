@@ -1,0 +1,4 @@
+{
+  "tvFunctions": ["createTv"],
+  "tailwindFunctions": ["createTv"]
+}
