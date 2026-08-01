@@ -59,5 +59,5 @@ jobs:
           name: ${{ steps.version.outputs.TAG }}
           body: ${{ steps.notes.outputs.BODY }}
           draft: true
-          # CHANGELOG.md is the source of truth; do not merge GitHub auto notes
           generate_release_notes: false
+          token: ${{ secrets.RELEASE_TOKEN }}

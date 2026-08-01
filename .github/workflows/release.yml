@@ -1,8 +1,6 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
   release:
     types: [published]
 
@@ -27,16 +25,8 @@ jobs:
 
       - name: Resolve version
         run: |
-          SHA_SHORT=$(git rev-parse --short HEAD)
-          echo "SHA_SHORT=$SHA_SHORT" >> "$GITHUB_ENV"
-
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            VERSION=${{ github.event.release.tag_name }}
-            VERSION=${VERSION#v}
-          else
-            VERSION=0.0.0-insiders.$SHA_SHORT
-          fi
-
+          VERSION=${{ github.event.release.tag_name }}
+          VERSION=${VERSION#v}
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Setup
@@ -44,10 +34,6 @@ jobs:
 
       - name: Resolve release channel
         run: echo "RELEASE_CHANNEL=$(pnpm release-channel "$VERSION")" >> "$GITHUB_ENV"
-
-      - name: Bump insiders version
-        if: github.event_name != 'release'
-        run: pnpm version "$VERSION" --force --no-git-tag-version
 
       - name: Check formatting
         run: pnpm format:check
