@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Package version without a leading v prefix (for example 0.1.0)
+        description: Package version without a leading v prefix (for example 0.2.0)
         required: true
 
 permissions:
@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Resolve version
         id: version
@@ -32,11 +34,17 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
           echo "TAG=v$VERSION" >> "$GITHUB_OUTPUT"
 
+          PREV="$(git describe --tags --abbrev=0 --match 'v*' --exclude "v${VERSION}" 2>/dev/null || true)"
+          echo "PREVIOUS_TAG=$PREV" >> "$GITHUB_OUTPUT"
+
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Extract release notes
+      - name: Extract release notes from CHANGELOG
         id: notes
+        env:
+          RELEASE_PREVIOUS_TAG: ${{ steps.version.outputs.PREVIOUS_TAG }}
+          RELEASE_REPO_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
           {
             echo "BODY<<EOF"
@@ -51,4 +59,5 @@ jobs:
           name: ${{ steps.version.outputs.TAG }}
           body: ${{ steps.notes.outputs.BODY }}
           draft: true
+          # CHANGELOG.md is the source of truth; do not merge GitHub auto notes
           generate_release_notes: false

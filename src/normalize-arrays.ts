@@ -2,21 +2,30 @@ import {
   applyClassArraySortJobs,
   classifyClassArrayElements,
   collectClassArraySortJobs,
-  sameArraySource,
+  countBlankLeaves,
+  flattenClassArrayTokens,
+  q,
+  sameSource,
   serializeClassArrayNodes
 } from './array-structure.js';
+import { buildGroupedStrings } from './classify-class.js';
 import { containsNode, getTvFunctionNames, nodeRange } from './ast-utils.js';
+import { resolveModifierGroupOrder } from './modifier-groups.js';
 import { sortClassTokenGroups } from './sort-classes.js';
+import { splitClasses } from './split-classes.js';
 import type {
   ClassArrayNode,
   EstreeArrayExpression,
   EstreeNode,
+  LocatedNode,
   PluginOptions,
+  ShapeMode,
   TextEdit
 } from './types.js';
 import { collectTvClassTargets } from './visit-tv.js';
 
-interface WorkItem {
+interface ArrayWorkItem {
+  kind: 'array';
   start: number;
   end: number;
   classified: ClassArrayNode[];
@@ -24,11 +33,31 @@ interface WorkItem {
   current: string;
 }
 
+interface StringWorkItem {
+  kind: 'string';
+  start: number;
+  end: number;
+  tokens: string[];
+  quote: string;
+  current: string;
+}
+
+type WorkItem = ArrayWorkItem | StringWorkItem;
+
+export const resolveShapeMode = (options: PluginOptions): ShapeMode => {
+  if (options.tvGroupByModifiers === true) {
+    return 'group';
+  }
+
+  if (options.tvFlattenToString === true) {
+    return 'flatten';
+  }
+
+  return 'structure';
+};
+
 /**
- * Structure-preserving array edits:
- * - string format unchanged (handled by Tailwind plugin)
- * - array stays array; nested single-class arrays unwrap when tvUnwrapSingleClassArrays
- * - multi-class slots keep index; inner classes sorted
+ * Structure-preserving / flatten / modifier-group edits for TV class values.
  */
 export const collectArrayNormalizeEdits = async (
   ast: EstreeNode,
@@ -36,9 +65,17 @@ export const collectArrayNormalizeEdits = async (
   originalText: string,
   tailwindPlugin?: unknown
 ): Promise<TextEdit[]> => {
-  const { arrayNodes, blankStringNodes } = collectTvClassTargets(ast, options);
+  const shape = resolveShapeMode(options);
+  const removeEmpty = options.tvRemoveEmptyClasses !== false;
+  const groupByBreakpoints = options.tvGroupByBreakpoints === true;
+  const groupOrder =
+    shape === 'group'
+      ? resolveModifierGroupOrder(options.tvModifierGroupOrder, groupByBreakpoints)
+      : null;
 
-  if (arrayNodes.length === 0 && blankStringNodes.length === 0) {
+  const { arrayNodes, blankStringNodes, staticStringNodes } = collectTvClassTargets(ast, options);
+
+  if (arrayNodes.length === 0 && blankStringNodes.length === 0 && staticStringNodes.length === 0) {
     return [];
   }
 
@@ -55,6 +92,8 @@ export const collectArrayNormalizeEdits = async (
           return true;
         });
 
+  const unwrap = shape === 'structure' ? options.tvUnwrapSingleClassArrays !== false : false;
+
   const work: WorkItem[] = [];
 
   for (const arrayNode of topLevel) {
@@ -65,7 +104,8 @@ export const collectArrayNormalizeEdits = async (
     }
 
     const classified = classifyClassArrayElements((arrayNode as EstreeArrayExpression).elements, {
-      unwrapSingleClassArrays: options.tvUnwrapSingleClassArrays !== false
+      unwrapSingleClassArrays: unwrap,
+      removeEmptyClasses: removeEmpty
     });
 
     if (!classified) {
@@ -73,6 +113,7 @@ export const collectArrayNormalizeEdits = async (
     }
 
     work.push({
+      kind: 'array',
       start: range.start,
       end: range.end,
       classified,
@@ -81,36 +122,106 @@ export const collectArrayNormalizeEdits = async (
     });
   }
 
-  const allJobs: string[][] = [];
-  const jobOffsets: number[] = [];
+  if (shape === 'group' || shape === 'flatten') {
+    for (const { node, value } of staticStringNodes) {
+      if (topLevel.some((arrayNode) => containsNode(arrayNode, node))) {
+        continue;
+      }
 
-  for (const item of work) {
-    jobOffsets.push(allJobs.length);
-    collectClassArraySortJobs(item.classified, allJobs);
+      const range = nodeRange(node);
+
+      if (!range) {
+        continue;
+      }
+
+      work.push({
+        kind: 'string',
+        start: range.start,
+        end: range.end,
+        tokens: splitClasses(value),
+        quote: originalText[range.start] === '"' ? '"' : "'",
+        current: originalText.slice(range.start, range.end)
+      });
+    }
+  }
+
+  const tokenJobs: string[][] = [];
+  /** For structure mode: start index into tokenJobs for each work item. */
+  const structureOffsets: number[] = [];
+  /** For flatten/group: work index → tokenJobs index (or -1 if no sort job). */
+  const flatJobIndex = new Map<number, number>();
+
+  for (let w = 0; w < work.length; w++) {
+    const item = work[w]!;
+
+    if (shape === 'structure' && item.kind === 'array') {
+      structureOffsets[w] = tokenJobs.length;
+      collectClassArraySortJobs(item.classified, tokenJobs);
+      continue;
+    }
+
+    structureOffsets[w] = -1;
+
+    const tokens =
+      item.kind === 'array' ? flattenClassArrayTokens(item.classified) : [...item.tokens];
+
+    if (tokens.length === 0) {
+      flatJobIndex.set(w, -1);
+      continue;
+    }
+
+    flatJobIndex.set(w, tokenJobs.length);
+    tokenJobs.push(tokens);
   }
 
   const sortedAll =
-    allJobs.length === 0 ? [] : await sortClassTokenGroups(allJobs, options, tailwindPlugin);
+    tokenJobs.length === 0 ? [] : await sortClassTokenGroups(tokenJobs, options, tailwindPlugin);
 
   const edits: TextEdit[] = [];
 
   for (let w = 0; w < work.length; w++) {
     const item = work[w]!;
-    const offset = jobOffsets[w]!;
-    const nextOffset = w + 1 < work.length ? jobOffsets[w + 1]! : sortedAll.length;
-    const normalized = applyClassArraySortJobs(
-      item.classified,
-      sortedAll.slice(offset, nextOffset)
-    );
-    const replacement = serializeClassArrayNodes(normalized, item.quote);
+    let replacement: string | null = null;
 
-    if (!sameArraySource(item.current, replacement)) {
+    if (shape === 'structure' && item.kind === 'array') {
+      const offset = structureOffsets[w]!;
+      let nextOffset = tokenJobs.length;
+
+      for (let n = w + 1; n < work.length; n++) {
+        if (structureOffsets[n]! >= 0) {
+          nextOffset = structureOffsets[n]!;
+          break;
+        }
+      }
+
+      const groups = sortedAll.slice(offset, nextOffset);
+      const normalized = applyClassArraySortJobs(item.classified, groups);
+      replacement = serializeClassArrayNodes(normalized, item.quote);
+    } else if (shape === 'flatten') {
+      const idx = flatJobIndex.get(w);
+      const tokens = idx !== undefined && idx >= 0 ? (sortedAll[idx] ?? []) : [];
+      const blankCount = item.kind === 'array' ? countBlankLeaves(item.classified) : 0;
+      replacement = serializeFlatString(tokens, item.quote, removeEmpty, item, blankCount);
+    } else if (shape === 'group' && groupOrder) {
+      const idx = flatJobIndex.get(w);
+      const tokens = idx !== undefined && idx >= 0 ? (sortedAll[idx] ?? []) : [];
+      const grouped = buildGroupedStrings(tokens, groupOrder, groupByBreakpoints);
+      const blankCount = item.kind === 'array' ? countBlankLeaves(item.classified) : 0;
+      replacement = serializeGrouped(grouped, item.quote, removeEmpty, item, blankCount);
+    }
+
+    if (replacement !== null && !sameSource(item.current, replacement)) {
       edits.push({ start: item.start, end: item.end, replacement });
     }
   }
 
+  // Blank string leaves (structure / always when removeEmpty)
   for (const stringNode of blankStringNodes) {
     if (topLevel.some((arrayNode) => containsNode(arrayNode, stringNode))) {
+      continue;
+    }
+
+    if (!removeEmpty) {
       continue;
     }
 
@@ -130,6 +241,61 @@ export const collectArrayNormalizeEdits = async (
   }
 
   return edits;
+};
+
+const serializeFlatString = (
+  tokens: string[],
+  quote: string,
+  removeEmpty: boolean,
+  item: WorkItem,
+  blankCount: number
+): string => {
+  if (tokens.length === 0) {
+    if (!removeEmpty && item.kind === 'array') {
+      return serializeClassArrayNodes(item.classified, quote);
+    }
+
+    return quote + quote;
+  }
+
+  // Flatten is a single string — blank placeholders cannot be represented mid-string.
+  // When blanks must be kept, emit `[joined, '', …]` instead of losing them.
+  if (!removeEmpty && blankCount > 0) {
+    const parts = [tokens.join(' '), ...Array.from({ length: blankCount }, () => '')];
+    return '[' + parts.map((p) => q(p, quote)).join(', ') + ']';
+  }
+
+  return q(tokens.join(' '), quote);
+};
+
+const serializeGrouped = (
+  groups: string[],
+  quote: string,
+  removeEmpty: boolean,
+  item: WorkItem,
+  blankCount: number
+): string => {
+  if (groups.length === 0) {
+    if (!removeEmpty && item.kind === 'array') {
+      return serializeClassArrayNodes(item.classified, quote);
+    }
+
+    return quote + quote;
+  }
+
+  const parts = [...groups];
+
+  if (!removeEmpty && blankCount > 0) {
+    for (let i = 0; i < blankCount; i++) {
+      parts.push('');
+    }
+  }
+
+  if (parts.length === 1) {
+    return q(parts[0]!, quote);
+  }
+
+  return '[' + parts.map((g) => q(g, quote)).join(', ') + ']';
 };
 
 export const applyEdits = (text: string, edits: TextEdit[]): string => {
@@ -175,12 +341,14 @@ export const mayContainTvCall = (text: string, options: PluginOptions): boolean 
 
 /**
  * Cheap gate before the core parse / double-parse path.
- * String-only `tv({ base: '…' })` is handled by Tailwind — we only need a pre-pass when
- * there are arrays to normalize, static templates in arrays, or blank class strings.
  */
 export const mayNeedTvTransform = (text: string, options: PluginOptions): boolean => {
   if (!mayContainTvCall(text, options)) {
     return false;
+  }
+
+  if (options.tvGroupByModifiers === true || options.tvFlattenToString === true) {
+    return true;
   }
 
   // Array class values (the main job of this plugin)
@@ -189,10 +357,12 @@ export const mayNeedTvTransform = (text: string, options: PluginOptions): boolea
   }
 
   // Whitespace-only class strings in source: '' / '   ' / '\t' / `  `
-  // (false positives only cost a cheap core parse — still skip pure utility strings)
   if (/:\s*(['"`])(?:\s|\\[nrtvfr])*\1/.test(text)) {
     return true;
   }
 
   return false;
 };
+
+// Re-export for tests
+export type { LocatedNode };

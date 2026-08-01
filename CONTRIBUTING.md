@@ -74,6 +74,39 @@ PR titles follow the same shape (CI checks them — matters for squash merges).
 
 Skip hooks only if you must — CI still runs the full suite.
 
+## Changelog and releases
+
+**Source of truth:** [`CHANGELOG.md`](./CHANGELOG.md) ([Keep a Changelog](https://keepachangelog.com/) + SemVer).
+
+GitHub Release bodies are generated **from** the changelog — edit `CHANGELOG.md` on `main`, not the Release UI.
+
+| Section                                           | Use for                                  |
+| ------------------------------------------------- | ---------------------------------------- |
+| `### Added`                                       | New options, surfaces, capabilities      |
+| `### Changed`                                     | Behavior / defaults that stay compatible |
+| `### Fixed`                                       | Bug fixes                                |
+| `### Deprecated` / `### Removed` / `### Security` | As needed                                |
+
+### Release flow
+
+1. Under `## [Unreleased]`, keep notes updated as PRs land (same categories).
+2. When cutting a release (e.g. `0.2.0`):
+   - Rename `[Unreleased]` → `[0.2.0] - YYYY-MM-DD`
+   - Add a fresh empty `## [Unreleased]`
+   - Update compare links at the bottom of `CHANGELOG.md`
+   - Bump `package.json` `version`
+3. Tag / run **Prepare Release** (`v0.2.0` or workflow_dispatch). The draft release body is:
+   - that version’s changelog section, then
+   - an auto **Full Changelog** compare link to the previous tag
+4. Review the draft → publish. The Release workflow then publishes to npm.
+
+```bash
+pnpm release-notes 0.1.0                  # preview body
+pnpm release-notes 0.2.0 --previous v0.1.0
+```
+
+Default npm channel for this feature set: **0.2.0** (minor — additive options, compatible defaults). Use `1.0.0` only when committing to a stable public API.
+
 ## Maintainer checklist (new repo)
 
 ```bash

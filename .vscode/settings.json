@@ -6,9 +6,6 @@
   "js/ts.experimental.useTsgo": false,
 
   "editor.formatOnSave": true,
-  "editor.quickSuggestions": {
-    "strings": "on"
-  },
   "eslint.useFlatConfig": true,
   "eslint.format.enable": true,
   "prettier.requireConfig": true,

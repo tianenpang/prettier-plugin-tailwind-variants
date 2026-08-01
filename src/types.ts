@@ -53,11 +53,18 @@ export interface TextEdit {
 export interface ClassValueVisitors {
   onArray: (node: EstreeArrayExpression & LocatedNode) => void;
   onBlankString: (node: LocatedNode) => void;
+  /** Non-blank static string class leaves (for flatten / group morphs). */
+  onStaticString?: (node: LocatedNode, value: string) => void;
 }
 
 export interface PluginOptions {
   tvFunctions?: string[];
   tvUnwrapSingleClassArrays?: boolean;
+  tvGroupByModifiers?: boolean;
+  tvModifierGroupOrder?: string[];
+  tvFlattenToString?: boolean;
+  tvRemoveEmptyClasses?: boolean;
+  tvGroupByBreakpoints?: boolean;
   tailwindStylesheet?: string;
   tailwindConfig?: string;
   /** Absolute or cwd-relative path of the file being formatted (from Prettier). */
@@ -78,11 +85,18 @@ export interface FixedArray {
   type: 'fixed-array';
   children: ClassArrayNode[];
 }
+export interface Blank {
+  type: 'blank';
+  value: string;
+}
 export interface Drop {
   type: 'drop';
 }
-export type ClassArrayNode = Mobile | FixedString | FixedArray | Drop;
+export type ClassArrayNode = Mobile | FixedString | FixedArray | Blank | Drop;
 
 export interface ClassifyOptions {
   unwrapSingleClassArrays?: boolean;
+  removeEmptyClasses?: boolean;
 }
+
+export type ShapeMode = 'group' | 'flatten' | 'structure';

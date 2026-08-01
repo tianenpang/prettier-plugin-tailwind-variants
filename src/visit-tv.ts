@@ -34,6 +34,8 @@ const visitClassValues = (
   if (str !== null) {
     if (isBlankClassString(str)) {
       visitors.onBlankString(valueNode);
+    } else {
+      visitors.onStaticString?.(valueNode, str);
     }
     return;
   }
@@ -138,21 +140,23 @@ export const collectTvClassTargets = (
 ): {
   arrayNodes: Array<EstreeArrayExpression & LocatedNode>;
   blankStringNodes: LocatedNode[];
+  staticStringNodes: Array<{ node: LocatedNode; value: string }>;
 } => {
   const root = ast.type === 'File' ? (ast.program as EstreeNode) : ast;
 
   if (!root || root.type !== 'Program') {
-    return { arrayNodes: [], blankStringNodes: [] };
+    return { arrayNodes: [], blankStringNodes: [], staticStringNodes: [] };
   }
 
   const functionNames = getTvFunctionNames(options);
 
   if (functionNames.size === 0) {
-    return { arrayNodes: [], blankStringNodes: [] };
+    return { arrayNodes: [], blankStringNodes: [], staticStringNodes: [] };
   }
 
   const arrayNodes: Array<EstreeArrayExpression & LocatedNode> = [];
   const blankStringNodes: LocatedNode[] = [];
+  const staticStringNodes: Array<{ node: LocatedNode; value: string }> = [];
 
   walkNode(root, (node) => {
     if (node.type === 'CallExpression') {
@@ -162,10 +166,13 @@ export const collectTvClassTargets = (
         },
         onBlankString: (stringNode) => {
           blankStringNodes.push(stringNode);
+        },
+        onStaticString: (stringNode, value) => {
+          staticStringNodes.push({ node: stringNode, value });
         }
       });
     }
   });
 
-  return { arrayNodes, blankStringNodes };
+  return { arrayNodes, blankStringNodes, staticStringNodes };
 };

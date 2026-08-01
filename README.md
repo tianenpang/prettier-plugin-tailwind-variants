@@ -2,7 +2,11 @@
 
 <img src="./.github/banner.jpg" alt="prettier-plugin-tailwind-variants" />
 
-A [Prettier v3+](https://prettier.io/) plugin for [Tailwind Variants](https://www.tailwind-variants.org/) that formats class arrays while preserving structure, then sorts them with [`prettier-plugin-tailwindcss`](https://github.com/tailwindlabs/prettier-plugin-tailwindcss) v0.8+.
+A [Prettier](https://prettier.io/) plugin for [Tailwind Variants](https://www.tailwind-variants.org/). Formats `tv()` class arrays while preserving structure, then sorts with [`prettier-plugin-tailwindcss`](https://github.com/tailwindlabs/prettier-plugin-tailwindcss).
+
+[![npm version](https://img.shields.io/npm/v/prettier-plugin-tailwind-variants?logo=npm&logoColor=white)](https://www.npmjs.com/package/prettier-plugin-tailwind-variants)
+[![License: MIT](https://img.shields.io/github/license/tianenpang/prettier-plugin-tailwind-variants)](./LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/tianenpang/prettier-plugin-tailwind-variants/ci.yml?branch=main&label=CI)](https://github.com/tianenpang/prettier-plugin-tailwind-variants/actions/workflows/ci.yml)
 
 ## Installation
 
@@ -23,37 +27,35 @@ export default {
 };
 ```
 
-Always compose with `prettier-plugin-tailwindcss` as shown above.
+Must be composed with `prettier-plugin-tailwindcss` as above.
 
 ## Options
 
-### `tvFunctions`
+| Option                      | Default  | Description                                                                                        |
+| --------------------------- | -------- | -------------------------------------------------------------------------------------------------- |
+| `tvFunctions`               | `['tv']` | Callee names to format. Keep `tailwindFunctions` in sync for string sorting.                       |
+| `tvUnwrapSingleClassArrays` | `true`   | Unwrap nested single-class arrays into the parent sort pool. Ignored when grouping or flattening.  |
+| `tvGroupByModifiers`        | `false`  | Split tokens into one string per modifier group (`base`, `hover`, `dark`, …).                      |
+| `tvModifierGroupOrder`      | built-in | Group id order when grouping is on. Ignored when grouping is off.                                  |
+| `tvFlattenToString`         | `false`  | Flatten arrays / nests into a single class string. Ignored for final shape when grouping is on.    |
+| `tvRemoveEmptyClasses`      | `true`   | Remove empty / whitespace-only class strings and empty arrays.                                     |
+| `tvGroupByBreakpoints`      | `false`  | When grouping, put each breakpoint (`sm`, `md`, …) in its own group. Ignored when grouping is off. |
 
-Callee names to format. Default: `['tv']`.
+**Shape priority:** `tvGroupByModifiers` → else `tvFlattenToString` → else preserve structure (+ unwrap).
 
-```js
-export default {
-  plugins: [tailwindVariants(tailwindcss)],
-  tvFunctions: ['tv', 'createTv'],
-  // Keep Tailwind’s list in sync for string sorting
-  tailwindFunctions: ['tv', 'createTv']
-};
+```ts
+// tvGroupByModifiers: true
+base: ['dark:bg-black', 'px-4', 'hover:bg-red-500', 'py-2'];
+// →
+base: ['px-4 py-2', 'hover:bg-red-500', 'dark:bg-black'];
+
+// tvFlattenToString: true
+base: ['text-white', ['py-2', 'px-4'], 'rounded-lg'];
+// →
+base: 'rounded-lg px-4 py-2 text-white';
 ```
 
-### `tvUnwrapSingleClassArrays`
-
-When `true` (default), nested single-class arrays unwrap into the parent sort pool. Set `false` to keep nesting like `['shadow-sm', ['bg-blue-500']]`.
-
-```js
-export default {
-  plugins: [tailwindVariants(tailwindcss)],
-  tvUnwrapSingleClassArrays: false
-};
-```
-
-Empty and whitespace-only class strings, and empty arrays, are removed.
-
-## How classes are formatted
+## Formatting
 
 ```ts
 // Before
@@ -61,42 +63,41 @@ tv({
   base: ['text-white', ['py-2', 'px-4'], 'rounded-lg']
 });
 
-// After
+// After (default structure mode)
 tv({
   base: ['rounded-lg', ['px-4', 'py-2'], 'text-white']
 });
 ```
 
-1. Strings stay strings
-2. Arrays stay arrays
-3. Multi-class nested slots keep position; internals sort
-4. Single-class nested arrays unwrap when enabled
-
-### Surfaces
-
-`base` · `slots` · `variants` · `compoundVariants` (`class` / `className`) · `compoundSlots` (`class` / `className`)
-
-### Frameworks
-
-JS/TS, plus `<script>` regions in Vue, Svelte, Astro, HTML, and similar. Install each framework’s Prettier plugin when you use that parser. CSS is left alone.
+Covers `base`, `slots`, `variants`, `compoundVariants` / `compoundSlots` (`class` / `className`). JS/TS and `<script>` regions (Vue, Svelte, Astro, HTML, …); CSS is left alone. Framework parsers need their own Prettier plugins.
 
 ## Editor IntelliSense
 
-Prefer key-scoped `tailwindCSS.experimental.classRegex` over `classFunctions: ["tv"]` so `defaultVariants` and compound conditions are not treated as classes.
+Prefer key-scoped `classRegex` over `classFunctions: ["tv"]` so conditions and `defaultVariants` are skipped. Copy from [`.vscode/settings.json`](./.vscode/settings.json) and enable `"editor.quickSuggestions": { "strings": "on" }`.
 
-| Complete                      | Skip                                         |
-| ----------------------------- | -------------------------------------------- |
-| `base`, slots, variant leaves | `defaultVariants`                            |
-| `class` / `className`         | `compoundSlots[].slots` (names)              |
-| Nested class arrays           | Conditions (`size: 'sm'`, `isActive: false`) |
-
-Copy the `classRegex` from this repo’s [`.vscode/settings.json`](./.vscode/settings.json), and enable `"editor.quickSuggestions": { "strings": "on" }`.
+```json
+{
+  "tailwindCSS.experimental.classRegex": [
+    ["\\b(?:base|class|className)\\s*:\\s*['\"`]([^'\"`]*)['\"`]"],
+    [
+      "\\b(?:base|class|className)\\s*:\\s*(\\[(?:[^\\[\\]]|\\[(?:[^\\[\\]]|\\[(?:[^\\[\\]]|\\[[^\\[\\]]*\\])*\\])*\\])*\\])",
+      "['\"`]([^'\"`]*)['\"`]"
+    ],
+    ["\\b(?:class|className)\\s*:\\s*(\\{(?:[^{}]|\\{[^{}]*\\})*\\})", "['\"`]([^'\"`]*)['\"`]"],
+    ["\\bslots\\s*:\\s*(\\{(?:[^{}]|\\{[^{}]*\\})*\\})", "['\"`]([^'\"`]*)['\"`]"],
+    [
+      "\\bvariants\\s*:\\s*(\\{(?:[^{}]|\\{(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*\\})*\\})",
+      "['\"`]([^'\"`]*)['\"`]"
+    ]
+  ]
+}
+```
 
 ## Limitations
 
 - Static strings and literal arrays only
 - Dynamic values skip that array
-- Peers: `prettier`, `prettier-plugin-tailwindcss`
+- Peers: `prettier@^3.0.0`, `prettier-plugin-tailwindcss@^0.8.0`
 
 ## Community
 

@@ -1,0 +1,5 @@
+{
+  "tvGroupByModifiers": true,
+  "tvGroupByBreakpoints": true,
+  "tvModifierGroupOrder": ["base", "md", "sm", "hover"]
+}

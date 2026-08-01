@@ -1,7 +1,7 @@
 {
   "name": "prettier-plugin-tailwind-variants",
   "license": "MIT",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A Prettier plugin for Tailwind Variants that formats class arrays while preserving structure, then sorts them with prettier-plugin-tailwindcss",
   "keywords": [
     "prettier",

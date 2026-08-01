@@ -1,6 +1,13 @@
 import { staticStringValue } from './ast-utils.js';
 import { splitClasses } from './split-classes.js';
-import type { ClassArrayNode, ClassifyOptions, EstreeNode, FixedArray, Mobile } from './types.js';
+import type {
+  Blank,
+  ClassArrayNode,
+  ClassifyOptions,
+  EstreeNode,
+  FixedArray,
+  Mobile
+} from './types.js';
 
 const BLANK_RE = /^\s*$/;
 
@@ -13,6 +20,7 @@ export const classifyClassArrayElement = (
   opts: ClassifyOptions = {}
 ): ClassArrayNode | null => {
   const unwrapSingle = opts.unwrapSingleClassArrays !== false;
+  const removeEmpty = opts.removeEmptyClasses !== false;
 
   if (!node) {
     return null;
@@ -22,13 +30,21 @@ export const classifyClassArrayElement = (
 
   if (str !== null) {
     if (BLANK_RE.test(str)) {
-      return { type: 'drop' };
+      if (removeEmpty) {
+        return { type: 'drop' };
+      }
+
+      return { type: 'blank', value: str } satisfies Blank;
     }
 
     const tokens = splitClasses(str);
 
     if (tokens.length === 0) {
-      return { type: 'drop' };
+      if (removeEmpty) {
+        return { type: 'drop' };
+      }
+
+      return { type: 'blank', value: str };
     }
 
     if (tokens.length === 1) {
@@ -59,7 +75,11 @@ export const classifyClassArrayElement = (
     }
 
     if (children.length === 0) {
-      return { type: 'drop' };
+      if (removeEmpty) {
+        return { type: 'drop' };
+      }
+
+      return { type: 'fixed-array', children: [] };
     }
 
     if (unwrapSingle && children.length === 1 && children[0]!.type === 'mobile') {
@@ -77,6 +97,7 @@ export const classifyClassArrayElements = (
   opts: ClassifyOptions = {}
 ): ClassArrayNode[] | null => {
   const out: ClassArrayNode[] = [];
+  const removeEmpty = opts.removeEmptyClasses !== false;
 
   for (const el of elementNodes) {
     if (el === null) {
@@ -94,7 +115,47 @@ export const classifyClassArrayElements = (
     }
   }
 
+  if (out.length === 0 && !removeEmpty) {
+    // Preserve an empty array shell when every element was a kept blank that
+    // somehow dropped — normally blanks are kept as blank nodes.
+  }
+
   return out;
+};
+
+/** Deep-collect class tokens (ignores blanks). */
+export const flattenClassArrayTokens = (nodes: ClassArrayNode[]): string[] => {
+  const out: string[] = [];
+
+  const walk = (list: ClassArrayNode[]) => {
+    for (const node of list) {
+      if (node.type === 'mobile') {
+        out.push(node.token);
+      } else if (node.type === 'fixed-string') {
+        out.push(...node.tokens);
+      } else if (node.type === 'fixed-array') {
+        walk(node.children);
+      }
+    }
+  };
+
+  walk(nodes);
+  return out;
+};
+
+/** Count preserved blank leaves (tvRemoveEmptyClasses: false). */
+export const countBlankLeaves = (nodes: ClassArrayNode[]): number => {
+  let n = 0;
+
+  for (const node of nodes) {
+    if (node.type === 'blank') {
+      n += 1;
+    } else if (node.type === 'fixed-array') {
+      n += countBlankLeaves(node.children);
+    }
+  }
+
+  return n;
 };
 
 const collectSortJobs = (nodes: ClassArrayNode[], out: string[][]): void => {
@@ -128,6 +189,11 @@ const applySortJobs = (
       continue;
     }
 
+    if (node.type === 'blank') {
+      prepared.push(node);
+      continue;
+    }
+
     if (node.type === 'fixed-string') {
       const tokens = node.tokens.filter((t) => t.length > 0);
 
@@ -148,16 +214,10 @@ const applySortJobs = (
 
     if (node.type === 'fixed-array') {
       const nested = applySortJobs(node.children, sortedGroups, cursor);
-
-      if (nested.length === 0) {
-        continue;
-      }
-
       prepared.push({ type: 'fixed-array', children: nested } satisfies FixedArray);
       continue;
     }
 
-    // Remaining nodes are mobiles after drop / fixed-* branches above
     if (node.token.length === 0) {
       continue;
     }
@@ -225,6 +285,10 @@ const serializeNode = (node: ClassArrayNode, quote: string): string => {
     return q(node.tokens.join(' '), quote);
   }
 
+  if (node.type === 'blank') {
+    return q(node.value, quote);
+  }
+
   if (node.type === 'drop') {
     return '';
   }
@@ -232,7 +296,7 @@ const serializeNode = (node: ClassArrayNode, quote: string): string => {
   return serializeClassArrayNodes(node.children, quote);
 };
 
-const q = (value: string, quote: string): string => {
+export const q = (value: string, quote: string): string => {
   if (quote === "'") {
     return "'" + value.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
   }
@@ -242,4 +306,8 @@ const q = (value: string, quote: string): string => {
 
 export const sameArraySource = (a: string, b: string): boolean => {
   return a.replace(/\s+/g, ' ').trim() === b.replace(/\s+/g, ' ').trim();
+};
+
+export const sameSource = (a: string, b: string): boolean => {
+  return sameArraySource(a, b);
 };
