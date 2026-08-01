@@ -165,20 +165,16 @@ export const buildGroupedStrings = (
 
   const finalOrder = [...order];
   const orderSet = new Set(order);
-  const extraIds = [...extras].sort((a, b) => a.localeCompare(b));
+  // Insert unknowns as one sorted block so relative order stays ascending
+  // (repeated splice at a fixed index would reverse the list).
+  const extraIds = [...extras].filter((id) => !orderSet.has(id)).sort((a, b) => a.localeCompare(b));
 
-  for (const id of extraIds) {
-    if (orderSet.has(id)) {
-      continue;
-    }
-
-    // Prefer placing unknown breakpoint-like ids after standard screens / before supports
-    const otherIdx = finalOrder.indexOf('other');
+  if (extraIds.length > 0) {
+    // After standard screens / before supports (else before other, else append)
     const supportsIdx = finalOrder.indexOf('supports');
+    const otherIdx = finalOrder.indexOf('other');
     const insertAt = supportsIdx >= 0 ? supportsIdx : otherIdx >= 0 ? otherIdx : finalOrder.length;
-
-    finalOrder.splice(insertAt, 0, id);
-    orderSet.add(id);
+    finalOrder.splice(insertAt, 0, ...extraIds);
   }
 
   const out: string[] = [];

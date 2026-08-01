@@ -68,4 +68,14 @@ describe('buildGroupedStrings', () => {
     const out = buildGroupedStrings(['py-2', 'px-4'], order, false);
     expect(out).toEqual(['py-2 px-4']);
   });
+
+  it('inserts multiple unknown breakpoint groups in ascending sorted order', () => {
+    const order = resolveModifierGroupOrder(undefined, true);
+    const out = buildGroupedStrings(
+      ['px-4', 'max-lg:px-8', 'max-sm:px-2', 'hover:bg-red-500'],
+      order,
+      true
+    );
+    expect(out).toEqual(['px-4', 'hover:bg-red-500', 'max-lg:px-8', 'max-sm:px-2']);
+  });
 });
