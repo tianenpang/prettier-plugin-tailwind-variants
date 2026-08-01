@@ -9,6 +9,14 @@ How releases work: edit this file on `main` under `[Unreleased]`. Publishing a G
 Release copies that version’s section into the release body (plus a compare link).
 Do not treat the GitHub Release editor as the source of truth.
 
+## [Unreleased]
+
+## [0.2.1] - 2026-08-01
+
+### Fixed
+
+- Insert multiple unknown modifier groups (e.g. `max-sm`, `max-lg`) as one sorted block so their relative order stays ascending
+
 ## [0.2.0] - 2026-07-31
 
 ### Added
@@ -32,6 +40,7 @@ Do not treat the GitHub Release editor as the source of truth.
 - Normalize class arrays on `base`, `slots`, `variants`, `compoundVariants`, and `compoundSlots`
 - Options: `tvFunctions`, `tvUnwrapSingleClassArrays`
 
-[Unreleased]: https://github.com/tianenpang/prettier-plugin-tailwind-variants/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/tianenpang/prettier-plugin-tailwind-variants/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/tianenpang/prettier-plugin-tailwind-variants/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/tianenpang/prettier-plugin-tailwind-variants/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/tianenpang/prettier-plugin-tailwind-variants/releases/tag/v0.1.0
