@@ -11,6 +11,12 @@ Do not treat the GitHub Release editor as the source of truth.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-10
+
+### Changed
+
+- Update project dependencies
+
 ## [0.2.1] - 2026-08-01
 
 ### Fixed
@@ -40,7 +46,8 @@ Do not treat the GitHub Release editor as the source of truth.
 - Normalize class arrays on `base`, `slots`, `variants`, `compoundVariants`, and `compoundSlots`
 - Options: `tvFunctions`, `tvUnwrapSingleClassArrays`
 
-[Unreleased]: https://github.com/tianenpang/prettier-plugin-tailwind-variants/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/tianenpang/prettier-plugin-tailwind-variants/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/tianenpang/prettier-plugin-tailwind-variants/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/tianenpang/prettier-plugin-tailwind-variants/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/tianenpang/prettier-plugin-tailwind-variants/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/tianenpang/prettier-plugin-tailwind-variants/releases/tag/v0.1.0
