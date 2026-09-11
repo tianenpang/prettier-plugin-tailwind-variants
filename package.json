@@ -61,28 +61,28 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@commitlint/cli": "21.2.1",
-    "@commitlint/config-conventional": "21.2.0",
+    "@commitlint/cli": "21.2.2",
+    "@commitlint/config-conventional": "21.2.2",
     "@eslint/js": "10.0.1",
     "@types/node": "26.1.2",
-    "eslint": "10.8.0",
+    "eslint": "10.10.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.6",
     "husky": "9.1.7",
     "jiti": "2.7.0",
-    "lint-staged": "17.3.0",
+    "lint-staged": "17.5.1",
     "prettier": "3.9.6",
-    "prettier-plugin-astro": "0.14.1",
+    "prettier-plugin-astro": "1.0.0",
     "prettier-plugin-svelte": "4.1.1",
     "prettier-plugin-tailwindcss": "0.8.1",
-    "svelte": "5.56.8",
-    "tailwind-variants": "3.3.0",
+    "svelte": "5.57.0",
+    "tailwind-variants": "3.3.1",
     "tailwindcss": "4.3.3",
-    "tinybench": "6.1.2",
-    "tsdown": "0.22.14",
+    "tinybench": "6.2.0",
+    "tsdown": "0.23.0",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.65.0",
-    "vitest": "4.1.10"
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.0"
   },
   "peerDependencies": {
     "prettier": "^3.0.0",
@@ -90,7 +90,7 @@
   },
   "engines": {
     "node": ">=22.x",
-    "pnpm": ">=11.x"
+    "pnpm": ">=12.x"
   },
-  "packageManager": "pnpm@11.18.0"
+  "packageManager": "pnpm@12.3.4"
 }
